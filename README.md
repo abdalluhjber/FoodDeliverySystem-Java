@@ -1,58 +1,12 @@
-# Food Delivery System (Java) 🍔🍕🥤
+# Food Delivery System (Java)
 
-An Object-Oriented restaurant order processing, billing, and delivery tracking system implemented in Java, exactly matching the provided UML Class Diagram specification.
+A simple object-oriented restaurant order processing system implemented in Java.
+Covers menu items, order management, delivery options, and payment methods.
 
----
-
-## 📋 System Requirements & Design Overview
-
-A restaurant requires a robust system to:
-1. Receive customer orders with customizable menu items.
-2. Calculate item prices, line totals, subtotals, and total bills.
-3. Support flexible delivery options without modifying the `Order` class.
-4. Process multiple payment methods with method-specific fees.
-5. Track and enforce order lifecycles and business state constraints.
-
----
-
-## 📐 UML Class Diagram
+## UML Class Diagram
 
 ```mermaid
 classDiagram
-    class Order {
-        -int counter$ = 1000
-        -int orderNumber
-        -String customerName
-        -List~OrderLine~ lines
-        -OrderStatus status
-        -DeliveryOption delivery
-        +Order(customerName, delivery)
-        +addItem(item: MenuItem) void
-        +addItem(item: MenuItem, qty: int) void
-        +getSubtotal() double
-        +getTotal() double
-        +pay(method: PaymentMethod) void
-        +deliver() void
-        +cancel() void
-    }
-
-    class OrderStatus {
-        <<enumeration>>
-        NEW
-        PAID
-        DELIVERED
-        CANCELLED
-    }
-
-    class OrderLine {
-        -MenuItem item
-        -int quantity
-        +OrderLine(item: MenuItem, quantity: int)
-        +getLineTotal() double
-        +getItem() MenuItem
-        +getQuantity() int
-    }
-
     class MenuItem {
         <<abstract>>
         -String name
@@ -65,16 +19,25 @@ classDiagram
 
     class Meal {
         -int extraToppings
+        -double TOPPING_PRICE$ = 1.5
         +Meal(name: String, basePrice: double, extraToppings: int)
         +getPrice() double
-        +getExtraToppings() int
     }
 
     class Drink {
         -boolean large
+        -double LARGE_SURCHARGE$ = 1.0
         +Drink(name: String, basePrice: double, large: boolean)
         +getPrice() double
-        +isLarge() boolean
+    }
+
+    class OrderLine {
+        -MenuItem item
+        -int quantity
+        +OrderLine(item: MenuItem, quantity: int)
+        +getItem() MenuItem
+        +getQuantity() int
+        +getLineTotal() double
     }
 
     class DeliveryOption {
@@ -83,10 +46,12 @@ classDiagram
     }
 
     class StandardDelivery {
+        -double FEE$ = 2.0
         +getFee() double
     }
 
     class ExpressDelivery {
+        -double FEE$ = 5.0
         +getFee() double
     }
 
@@ -104,11 +69,34 @@ classDiagram
         +pay(amount: double) double
     }
 
-    Order "1" *-- "1..*" OrderLine : contains
-    OrderLine " * " --> "1" MenuItem : item
-    Order --> DeliveryOption : delivery
-    Order ..> PaymentMethod : uses
-    Order --> OrderStatus : status
+    class OrderStatus {
+        <<enumeration>>
+        NEW
+        PAID
+        DELIVERED
+        CANCELLED
+    }
+
+    class Order {
+        -int counter$ = 1000
+        -int orderNumber
+        -String customerName
+        -List~OrderLine~ lines
+        -OrderStatus status
+        -DeliveryOption delivery
+        +Order(customerName: String, delivery: DeliveryOption)
+        +addItem(item: MenuItem) void
+        +addItem(item: MenuItem, qty: int) void
+        +getSubtotal() double
+        +getTotal() double
+        +pay(method: PaymentMethod) void
+        +deliver() void
+        +cancel() void
+        +getOrderNumber() int
+        +getCustomerName() String
+        +getStatus() OrderStatus
+        +getDelivery() DeliveryOption
+    }
 
     MenuItem <|-- Meal
     MenuItem <|-- Drink
@@ -118,145 +106,85 @@ classDiagram
 
     PaymentMethod <|.. CashPayment
     PaymentMethod <|.. CardPayment
+
+    Order "1" *-- "1..*" OrderLine : contains
+    OrderLine "*" --> "1" MenuItem : item
+    Order --> "1" DeliveryOption : delivery
+    Order ..> PaymentMethod : uses
+    Order --> OrderStatus : status
 ```
 
----
+> **Note on multiplicity:** The UML shows `1..*` OrderLines per Order. In code, a NEW order
+> starts with an empty list while items are being added. Payment is rejected until at least
+> one item exists, so a PAID/DELIVERED order always satisfies `1..*`.
 
-## 🏗️ Object-Oriented Principles Applied
+**Supporting members beyond the simplified UML:** constructors for MenuItem, Meal, Drink,
+and OrderLine; accessors `getItem()`, `getQuantity()` on OrderLine; accessors
+`getOrderNumber()`, `getCustomerName()`, `getStatus()`, `getDelivery()` on Order;
+static final pricing constants `TOPPING_PRICE`, `LARGE_SURCHARGE`, and delivery `FEE` fields.
 
-1. **Encapsulation**:
-   - All fields are `private` with public accessors and mutator business logic.
-   - The order number sequence is encapsulated within `Order` using a private static counter (`counter = 1000`).
+## Pricing Rules
 
-2. **Inheritance & Polymorphism**:
-   - `MenuItem` is an `abstract` class defining the shared attributes (`name`, `basePrice`) and an abstract method `getPrice()`.
-   - `Meal` and `Drink` provide polymorphic implementations of `getPrice()`:
-     - `Meal`: `basePrice + (extraToppings * 1.5)`
-     - `Drink`: `basePrice + (large ? 1.0 : 0.0)`
+- **Meal:** basePrice + extraToppings × 1.5
+- **Drink:** basePrice + 1.0 if large, otherwise basePrice
+- **OrderLine total:** item.getPrice() × quantity
+- **Standard delivery:** 2.0
+- **Express delivery:** 5.0
+- **Cash payment:** returns amount (no fee)
+- **Card payment:** returns amount × 1.02
 
-3. **Composition**:
-   - `Order` has a composition relationship (`1` contains `1..*`) with `OrderLine`. `OrderLine` instances are managed and owned directly by `Order`.
+## Order Lifecycle
 
-4. **Strategy Pattern & Open-Closed Principle (OCP)**:
-   - **Delivery**: The `DeliveryOption` interface decouples `Order` from concrete delivery types (`StandardDelivery` costs $2, `ExpressDelivery` costs $5). New delivery options (e.g. Drone delivery, VIP delivery) can be added without modifying the `Order` class.
-   - **Payment**: The `PaymentMethod` interface decouples `Order` from payment mechanisms (`CashPayment` with 0% fee, `CardPayment` with 2% fee).
+- Status starts as `NEW`.
+- Items can only be added while `NEW`.
+- `pay()` requires at least one item and status `NEW` → changes to `PAID`.
+- `deliver()` requires status `PAID` → changes to `DELIVERED`.
+- `cancel()` requires status `NEW` → changes to `CANCELLED`.
 
-5. **State & Invariant Validation**:
-   - Items can only be added while the order status is `NEW`.
-   - Order transitions to `PAID` upon payment.
-   - Only a `PAID` order can be delivered (`deliver()`).
-   - Only a `NEW` order can be cancelled (`cancel()`).
-   - Violations throw informative `IllegalStateException` instances.
+## How to Compile and Run
 
----
+### Using batch scripts (Windows)
 
-## 🧮 Assignment Example Walkthrough
-
-**Given:**
-- 2 × Burger Meal (Base Price: $8.00, 1 extra topping @ $1.50)
-- 1 × Large Juice (Base Price: $3.00, Large: +$1.00)
-- Express Delivery ($5.00)
-- Paid by Card (2% fee)
-
-**Calculations:**
-```text
-Burger Unit Price = $8.00 + $1.50 = $9.50
-Burger Line Total = $9.50 × 2     = $19.00
-
-Juice Unit Price  = $3.00 + $1.00 = $4.00
-Juice Line Total  = $4.00 × 1     = $4.00
-
-Subtotal          = $19.00 + $4.00 = $23.00
-Express Delivery  = $5.00
-Order Total       = $23.00 + $5.00 = $28.00
-
-Card Payment Fee  = 2%
-Paid by Card      = $28.00 × 1.02  = $28.56
+```
+compile.bat
+run.bat
 ```
 
----
+### Using javac/java directly
 
-## 📂 Project Directory Structure
-
-```text
-FoodDeliverySystem-Java/
-├── pom.xml                                      # Maven configuration
-├── README.md                                    # Comprehensive documentation
-├── .gitignore                                   # Git ignore rules
-├── compile.bat                                  # 1-Click Windows compiler script
-├── run.bat                                      # 1-Click Windows runner script
-├── src/
-│   ├── main/
-│   │   └── java/
-│   │       └── com/
-│   │           └── fooddelivery/
-│   │               ├── OrderStatus.java         # Enum: NEW, PAID, DELIVERED, CANCELLED
-│   │               ├── MenuItem.java            # Abstract base class for items
-│   │               ├── Meal.java                # Meal with extra toppings calculation
-│   │               ├── Drink.java               # Drink with large surcharge calculation
-│   │               ├── OrderLine.java           # Order line item and line total
-│   │               ├── DeliveryOption.java      # Delivery strategy interface
-│   │               ├── StandardDelivery.java    # Standard delivery ($2)
-│   │               ├── ExpressDelivery.java     # Express delivery ($5)
-│   │               ├── PaymentMethod.java       # Payment strategy interface
-│   │               ├── CashPayment.java         # Cash payment (0% fee)
-│   │               ├── CardPayment.java         # Card payment (2% fee)
-│   │               ├── Order.java               # Core order entity with lifecycle rules
-│   │               └── Main.java                # Full scenario demonstration
-│   └── test/
-│       └── java/
-│           └── com/
-│               └── fooddelivery/
-│                   └── FoodDeliverySystemTest.java  # 30-case automated unit test suite
-```
-
----
-
-## 🚀 How to Compile and Run
-
-### Option 1: Using 1-Click Batch Scripts (Windows)
-1. Double-click `compile.bat` to compile all source files into `bin/`.
-2. Double-click `run.bat` to execute `Main` and run the automated test suite.
-
-### Option 2: Using Standard Java Commands (Terminal)
 ```bash
-# Navigate to project root
-cd FoodDeliverySystem-Java
-
-# Compile all classes
-javac -d bin src/main/java/com/fooddelivery/*.java src/test/java/com/fooddelivery/*.java
-
-# Run Main demonstration
+javac -d bin src/main/java/com/fooddelivery/*.java
 java -cp bin com.fooddelivery.Main
-
-# Run automated test suite
-java -cp bin com.fooddelivery.FoodDeliverySystemTest
 ```
 
-### Option 3: Using Maven
+### Using Maven
+
 ```bash
-# Compile and package
-mvn clean package
-
-# Run Main
-mvn exec:java
+mvn clean compile
+mvn exec:java -Dexec.mainClass="com.fooddelivery.Main"
 ```
 
----
+## Example Output
 
-## ✅ Automated Test Suite Verification
+```
+Burger Meal unit price: 9.5
+Juice unit price: 4.0
+Order #1001 created for Sarah Connor
+Status: NEW
+Subtotal: 23.0
+Delivery fee: 5.0
+Total: 28.0
+Card amount: 28.56
+Status after payment: PAID
+Status after delivery: DELIVERED
 
-The automated test suite (`FoodDeliverySystemTest`) tests **30 distinct assertions**:
-- [x] Automatic order number sequence (1001, 1002, 1003, ...)
-- [x] Meal pricing formulas with 0, 1, and N toppings
-- [x] Drink pricing formulas for regular and large sizes
-- [x] Exact assignment example line totals, subtotal ($23.00), total ($28.00), and card amount ($28.56)
-- [x] Delivery fees for Standard ($2.00) and Express ($5.00)
-- [x] Payment fee calculations for Cash (0%) and Card (2%)
-- [x] Complete lifecycle transitions: `NEW` ➔ `PAID` ➔ `DELIVERED`
-- [x] Cancellation rule enforcement (only `NEW` orders can be cancelled)
-- [x] Prevention of adding items to `PAID` or `CANCELLED` orders
-- [x] Prevention of delivering an unpaid order
-- [x] Prevention of cancelling a `PAID` or `DELIVERED` order
-- [x] Prevention of paying an empty order
-- [x] Extensibility test: adding custom delivery and payment strategies dynamically
+--- Validation checks ---
+Cannot add items: order is not NEW (current status: DELIVERED).
+Cannot deliver: order is not PAID (current status: DELIVERED).
+Cannot cancel: order is not NEW (current status: DELIVERED).
+Cannot pay: order is not NEW (current status: DELIVERED).
+Order #1002 status: NEW
+Order #1002 status after cancel: CANCELLED
+Cannot deliver: order is not PAID (current status: NEW).
+Cannot pay: order has no items.
+```

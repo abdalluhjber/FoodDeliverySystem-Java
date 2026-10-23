@@ -1,9 +1,5 @@
 package com.fooddelivery;
 
-/**
- * Concrete menu item representing a Meal.
- * Meal pricing calculation: base price + $1.5 per extra topping.
- */
 public class Meal extends MenuItem {
     private int extraToppings;
     private static final double TOPPING_PRICE = 1.5;
@@ -16,18 +12,8 @@ public class Meal extends MenuItem {
         this.extraToppings = extraToppings;
     }
 
-    public int getExtraToppings() {
-        return extraToppings;
-    }
-
     @Override
     public double getPrice() {
         return getBasePrice() + (extraToppings * TOPPING_PRICE);
-    }
-
-    @Override
-    public String toString() {
-        return String.format("Meal: %s [Extra toppings: %d, Unit Price: $%.2f]",
-                getName(), extraToppings, getPrice());
     }
 }

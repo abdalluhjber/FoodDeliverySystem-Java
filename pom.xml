@@ -10,52 +10,14 @@
     <packaging>jar</packaging>
 
     <name>FoodDeliverySystem</name>
-    <description>Object-Oriented Design implementation for a Restaurant Food Delivery System</description>
 
     <properties>
         <maven.compiler.source>17</maven.compiler.source>
         <maven.compiler.target>17</maven.compiler.target>
         <project.build.sourceEncoding>UTF-8</project.build.sourceEncoding>
-        <junit.jupiter.version>5.10.2</junit.jupiter.version>
     </properties>
 
-    <dependencies>
-        <dependency>
-            <groupId>org.junit.jupiter</groupId>
-            <artifactId>junit-jupiter-api</artifactId>
-            <version>${junit.jupiter.version}</version>
-            <scope>test</scope>
-        </dependency>
-        <dependency>
-            <groupId>org.junit.jupiter</groupId>
-            <artifactId>junit-jupiter-engine</artifactId>
-            <version>${junit.jupiter.version}</version>
-            <scope>test</scope>
-        </dependency>
-    </dependencies>
-
     <build>
-        <plugins>
-            <!-- Maven Compiler Plugin -->
-            <plugin>
-                <groupId>org.apache.maven.plugins</groupId>
-                <artifactId>maven-compiler-plugin</artifactId>
-                <version>3.13.0</version>
-                <configuration>
-                    <source>17</source>
-                    <target>17</target>
-                </configuration>
-            </plugin>
-
-            <!-- Exec Maven Plugin to run Main -->
-            <plugin>
-                <groupId>org.codehaus.mojo</groupId>
-                <artifactId>exec-maven-plugin</artifactId>
-                <version>3.2.0</version>
-                <configuration>
-                    <mainClass>com.fooddelivery.Main</mainClass>
-                </configuration>
-            </plugin>
-        </plugins>
+        <outputDirectory>${project.basedir}/bin</outputDirectory>
     </build>
 </project>
